@@ -6,6 +6,7 @@ import path from "path";
 import pool from "./connection";
 
 async function migrate(): Promise<void> {
+  const sql = fs.readFileSync(path.join(__dirname, "schema.sql"), "utf8");
   const schemaPath = path.join(__dirname, "schema.sql");
   const sql = fs.readFileSync(schemaPath, "utf8");
 

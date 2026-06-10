@@ -1,3 +1,35 @@
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
+CREATE TABLE IF NOT EXISTS users (
+  id            UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
+  email         VARCHAR(255) NOT NULL UNIQUE,
+  password_hash VARCHAR(255) NOT NULL,
+  name          VARCHAR(255) NOT NULL,
+  role          VARCHAR(50)  NOT NULL DEFAULT 'viewer'
+                CHECK (role IN ('admin', 'manager', 'viewer')),
+  created_at    TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS suppliers (
+  id                UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
+  name              VARCHAR(255) NOT NULL,
+  lead_time_days    INT          NOT NULL CHECK (lead_time_days >= 0),
+  reliability_score DECIMAL(4,3) NOT NULL CHECK (reliability_score BETWEEN 0 AND 1),
+  contact_email     VARCHAR(255) NOT NULL,
+  created_at        TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS products (
+  id          UUID          PRIMARY KEY DEFAULT gen_random_uuid(),
+  name        VARCHAR(255)  NOT NULL,
+  sku         VARCHAR(100)  NOT NULL UNIQUE,
+  category    VARCHAR(100)  NOT NULL,
+  unit_price  DECIMAL(10,2) NOT NULL CHECK (unit_price >= 0),
+  supplier_id UUID          NOT NULL REFERENCES suppliers(id) ON DELETE RESTRICT,
+  deleted_at  TIMESTAMPTZ,
+  created_at  TIMESTAMPTZ   NOT NULL DEFAULT NOW()
+);
+
 -- Enable the pgcrypto extension so gen_random_uuid() is available
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
@@ -36,6 +68,12 @@ CREATE TABLE IF NOT EXISTS warehouses (
   created_at   TIMESTAMPTZ  NOT NULL DEFAULT NOW()
 );
 
+CREATE TABLE IF NOT EXISTS inventory (
+  id            UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  product_id    UUID        NOT NULL REFERENCES products(id)   ON DELETE CASCADE,
+  warehouse_id  UUID        NOT NULL REFERENCES warehouses(id) ON DELETE CASCADE,
+  quantity      INT         NOT NULL DEFAULT 0 CHECK (quantity >= 0),
+  reorder_point INT         NOT NULL DEFAULT 0 CHECK (reorder_point >= 0),
 -- ─── inventory ───────────────────────────────────────────────────────────────
 -- Junction table: tracks how much of a product is in each warehouse.
 -- The pair (product_id, warehouse_id) is unique — one row per product-location.
@@ -55,6 +93,7 @@ CREATE TABLE IF NOT EXISTS orders (
   id         UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
   type       VARCHAR(20) NOT NULL CHECK (type IN ('purchase', 'sales')),
   status     VARCHAR(50) NOT NULL DEFAULT 'pending'
+             CHECK (status IN ('pending', 'confirmed', 'shipped', 'delivered', 'cancelled')),
                          CHECK (status IN ('pending', 'confirmed', 'shipped', 'delivered', 'cancelled')),
   quantity   INT         NOT NULL CHECK (quantity > 0),
   product_id UUID        NOT NULL REFERENCES products(id) ON DELETE RESTRICT,
@@ -73,6 +112,8 @@ CREATE TABLE IF NOT EXISTS alerts (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+CREATE INDEX IF NOT EXISTS idx_products_supplier   ON products(supplier_id);
+CREATE INDEX IF NOT EXISTS idx_products_deleted    ON products(deleted_at) WHERE deleted_at IS NULL;
 -- ─── indexes ─────────────────────────────────────────────────────────────────
 CREATE INDEX IF NOT EXISTS idx_products_supplier   ON products(supplier_id);
 CREATE INDEX IF NOT EXISTS idx_inventory_product   ON inventory(product_id);
