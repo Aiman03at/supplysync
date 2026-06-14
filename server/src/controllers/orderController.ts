@@ -51,9 +51,7 @@ export async function createOrder(
     }
 
     const result = await pool.query(
-      `INSERT INTO orders (type, quantity, product_id)
-       VALUES ($1, $2, $3)
-       RETURNING *`,
+      `INSERT INTO orders (type, quantity, product_id) VALUES ($1, $2, $3) RETURNING *`,
       [type, quantity, product_id]
     );
     res.status(201).json(result.rows[0]);

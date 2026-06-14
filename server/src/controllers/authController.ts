@@ -11,7 +11,12 @@ export async function register(req: Request, res: Response, next: NextFunction) 
       return res.status(400).json({ error: 'Email, password, and name required' });
     }
 
-    const hashedPassword = await bcrypt.hash(password, 10);
+    const existing = await pool.query('SELECT id FROM users WHERE email = $1', [email]);
+    if (existing.rows.length > 0) {
+      return res.status(409).json({ error: 'Email already registered' });
+    }
+
+    const password_hash = await bcrypt.hash(password, 10);
 
     const result = await pool.query(
       'INSERT INTO users (email, password_hash, name) VALUES ($1, $2, $3) RETURNING id, email, name, role',

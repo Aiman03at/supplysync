@@ -43,8 +43,7 @@ export async function createWarehouse(
 
     const result = await pool.query(
       `INSERT INTO warehouses (name, location, capacity, manager_name)
-       VALUES ($1, $2, $3, $4)
-       RETURNING *`,
+       VALUES ($1, $2, $3, $4) RETURNING *`,
       [name, location, capacity, manager_name]
     );
     res.status(201).json(result.rows[0]);
