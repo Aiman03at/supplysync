@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 import express from 'express';
 import { authenticateToken } from '../middleware/auth.js';
 import { pool } from '../db/connection.js';
@@ -69,5 +70,24 @@ router.get('/alerts/active', async (req, res, next) => {
     next(error);
   }
 });
+=======
+import { Router } from "express";
+import {
+  getAllInventory,
+  getInventoryByWarehouse,
+  updateInventory,
+  getAlerts,
+} from "../controllers/inventoryController";
+import { authenticateToken } from "../middleware/auth";
+
+const router = Router();
+
+// /alerts must be registered before /:warehouseId — Express matches routes
+// top-to-bottom, so a literal segment must come before a param segment.
+router.get("/alerts",        getAlerts);
+router.get("/",              getAllInventory);
+router.get("/:warehouseId",  getInventoryByWarehouse);
+router.put("/:id",           authenticateToken, updateInventory);
+>>>>>>> aecb8f6a7eb0193a1bdb117e8337d9919992da4c
 
 export default router;

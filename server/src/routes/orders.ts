@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 import express from 'express';
 import { authenticateToken } from '../middleware/auth.js';
 import { pool } from '../db/connection.js';
@@ -61,5 +62,20 @@ router.put('/:id/status', authenticateToken, async (req, res, next) => {
     next(error);
   }
 });
+=======
+import { Router } from "express";
+import {
+  getOrders,
+  createOrder,
+  updateOrderStatus,
+} from "../controllers/orderController";
+import { authenticateToken } from "../middleware/auth";
+
+const router = Router();
+
+router.get("/",           getOrders);
+router.post("/",          authenticateToken, createOrder);
+router.put("/:id/status", authenticateToken, updateOrderStatus);
+>>>>>>> aecb8f6a7eb0193a1bdb117e8337d9919992da4c
 
 export default router;

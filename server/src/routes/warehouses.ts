@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 import express from 'express';
 import { authenticateToken } from '../middleware/auth.js';
 import { pool } from '../db/connection.js';
@@ -31,5 +32,15 @@ router.post('/', authenticateToken, async (req, res, next) => {
     next(error);
   }
 });
+=======
+import { Router } from "express";
+import { getWarehouses, createWarehouse } from "../controllers/warehouseController";
+import { authenticateToken } from "../middleware/auth";
+
+const router = Router();
+
+router.get("/",  getWarehouses);
+router.post("/", authenticateToken, createWarehouse);
+>>>>>>> aecb8f6a7eb0193a1bdb117e8337d9919992da4c
 
 export default router;
