@@ -1,13 +1,18 @@
-<<<<<<< HEAD
 import express from 'express';
 import { authenticateToken } from '../middleware/auth.js';
 import { pool } from '../db/connection.js';
 
 const router = express.Router();
 
-router.get('/', async (req, res, next) => {
+router.get('/', async (_req, res, next) => {
   try {
-    const result = await pool.query('SELECT * FROM suppliers ORDER BY name');
+    const result = await pool.query(`
+      SELECT s.*, COUNT(p.id)::int AS product_count
+      FROM suppliers s
+      LEFT JOIN products p ON p.supplier_id = s.id AND p.deleted_at IS NULL
+      GROUP BY s.id
+      ORDER BY s.name
+    `);
     res.json(result.rows);
   } catch (error) {
     next(error);
@@ -32,15 +37,5 @@ router.post('/', authenticateToken, async (req, res, next) => {
     next(error);
   }
 });
-=======
-import { Router } from "express";
-import { getSuppliers, createSupplier } from "../controllers/supplierController";
-import { authenticateToken } from "../middleware/auth";
-
-const router = Router();
-
-router.get("/",  getSuppliers);
-router.post("/", authenticateToken, createSupplier);
->>>>>>> aecb8f6a7eb0193a1bdb117e8337d9919992da4c
 
 export default router;

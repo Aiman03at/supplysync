@@ -1,6 +1,6 @@
-import { Request, Response, NextFunction } from "express";
-import pool from "../db/connection";
-import { createError } from "../middleware/errorHandler";
+import { Request, Response, NextFunction } from 'express';
+import { pool } from '../db/connection.js';
+import { createError } from '../middleware/errorHandler.js';
 
 export async function getWarehouses(
   _req: Request,
@@ -38,16 +38,12 @@ export async function createWarehouse(
     };
 
     if (!name || !location || !capacity || !manager_name) {
-      throw createError(
-        "name, location, capacity, and manager_name are required",
-        400
-      );
+      throw createError('name, location, capacity, and manager_name are required', 400);
     }
 
     const result = await pool.query(
       `INSERT INTO warehouses (name, location, capacity, manager_name)
-       VALUES ($1, $2, $3, $4)
-       RETURNING *`,
+       VALUES ($1, $2, $3, $4) RETURNING *`,
       [name, location, capacity, manager_name]
     );
     res.status(201).json(result.rows[0]);

@@ -1,11 +1,10 @@
-<<<<<<< HEAD
 import express from 'express';
 import { authenticateToken } from '../middleware/auth.js';
 import { pool } from '../db/connection.js';
 
 const router = express.Router();
 
-router.get('/', async (req, res, next) => {
+router.get('/', async (_req, res, next) => {
   try {
     const result = await pool.query(`
       SELECT o.*, p.name as product_name, p.sku, s.name as supplier_name
@@ -62,20 +61,5 @@ router.put('/:id/status', authenticateToken, async (req, res, next) => {
     next(error);
   }
 });
-=======
-import { Router } from "express";
-import {
-  getOrders,
-  createOrder,
-  updateOrderStatus,
-} from "../controllers/orderController";
-import { authenticateToken } from "../middleware/auth";
-
-const router = Router();
-
-router.get("/",           getOrders);
-router.post("/",          authenticateToken, createOrder);
-router.put("/:id/status", authenticateToken, updateOrderStatus);
->>>>>>> aecb8f6a7eb0193a1bdb117e8337d9919992da4c
 
 export default router;
