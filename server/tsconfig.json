@@ -1,7 +1,13 @@
 {
   "compilerOptions": {
+<<<<<<< HEAD
+    "ignoreDeprecations": "6.0",
+    "target": "ES2020",
+    "module": "ES2020",
+=======
     "target": "ES2020",
     "module": "commonjs",
+>>>>>>> aecb8f6a7eb0193a1bdb117e8337d9919992da4c
     "lib": ["ES2020"],
     "outDir": "./dist",
     "rootDir": "./src",
@@ -9,6 +15,13 @@
     "esModuleInterop": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
+<<<<<<< HEAD
+    "moduleResolution": "node"
+  },
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", "dist"]
+}
+=======
     "resolveJsonModule": true,
     "declaration": true,
     "declarationMap": true,
@@ -17,3 +30,4 @@
   "include": ["src/**/*"],
   "exclude": ["node_modules", "dist"]
 }
+>>>>>>> aecb8f6a7eb0193a1bdb117e8337d9919992da4c

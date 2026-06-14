@@ -1,3 +1,22 @@
+<<<<<<< HEAD
+import pg from 'pg';
+import dotenv from 'dotenv';
+
+dotenv.config();
+
+export const pool = new pg.Pool({
+  connectionString: process.env.DATABASE_URL,
+});
+
+export async function testConnection() {
+  try {
+    await pool.query('SELECT NOW()');
+    console.log('✓ Database connected');
+  } catch (error) {
+    console.error('✗ Database connection failed:', error);
+  }
+}
+=======
 import { Pool } from "pg";
 
 if (!process.env.DATABASE_URL) {
@@ -18,3 +37,4 @@ pool.on("error", (err) => {
 });
 
 export default pool;
+>>>>>>> aecb8f6a7eb0193a1bdb117e8337d9919992da4c
