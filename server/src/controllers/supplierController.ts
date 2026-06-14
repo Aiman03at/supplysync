@@ -37,10 +37,7 @@ export async function createSupplier(
     };
 
     if (!name || lead_time_days == null || reliability_score == null || !contact_email) {
-      throw createError(
-        'name, lead_time_days, reliability_score, and contact_email are required',
-        400
-      );
+      throw createError('name, lead_time_days, reliability_score, and contact_email are required', 400);
     }
 
     const result = await pool.query(

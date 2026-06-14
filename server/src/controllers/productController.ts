@@ -4,9 +4,10 @@ import { pool } from '../db/connection.js';
 export async function getAllProducts(req: Request, res: Response, next: NextFunction) {
   try {
     const result = await pool.query(`
-      SELECT p.*, s.name as supplier_name 
-      FROM products p 
+      SELECT p.*, s.name as supplier_name
+      FROM products p
       LEFT JOIN suppliers s ON p.supplier_id = s.id
+      WHERE p.deleted_at IS NULL
       ORDER BY p.created_at DESC
     `);
     res.json(result.rows);
@@ -19,7 +20,10 @@ export async function getProductById(req: Request, res: Response, next: NextFunc
   try {
     const { id } = req.params;
     const result = await pool.query(
-      'SELECT p.*, s.name as supplier_name FROM products p LEFT JOIN suppliers s ON p.supplier_id = s.id WHERE p.id = $1',
+      `SELECT p.*, s.name as supplier_name
+       FROM products p
+       LEFT JOIN suppliers s ON p.supplier_id = s.id
+       WHERE p.id = $1 AND p.deleted_at IS NULL`,
       [id]
     );
     if (result.rows.length === 0) {
@@ -56,7 +60,10 @@ export async function updateProduct(req: Request, res: Response, next: NextFunct
     const { name, sku, category, unit_price, supplier_id } = req.body;
 
     const result = await pool.query(
-      'UPDATE products SET name=$1, sku=$2, category=$3, unit_price=$4, supplier_id=$5 WHERE id=$6 RETURNING *',
+      `UPDATE products
+       SET name=$1, sku=$2, category=$3, unit_price=$4, supplier_id=$5
+       WHERE id=$6 AND deleted_at IS NULL
+       RETURNING *`,
       [name, sku, category, unit_price, supplier_id, id]
     );
 
@@ -73,8 +80,14 @@ export async function updateProduct(req: Request, res: Response, next: NextFunct
 export async function deleteProduct(req: Request, res: Response, next: NextFunction) {
   try {
     const { id } = req.params;
-    await pool.query('DELETE FROM products WHERE id = $1', [id]);
-    res.json({ success: true });
+    const result = await pool.query(
+      `UPDATE products SET deleted_at = NOW() WHERE id = $1 AND deleted_at IS NULL RETURNING id`,
+      [id]
+    );
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Product not found' });
+    }
+    res.status(204).send();
   } catch (error) {
     next(error);
   }

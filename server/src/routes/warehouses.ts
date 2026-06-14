@@ -1,6 +1,6 @@
 import express from 'express';
 import { authenticateToken } from '../middleware/auth.js';
-import { pool } from '../db/connection.js';
+import { getWarehouses, createWarehouse } from '../controllers/warehouseController.js';
 
 const router = express.Router();
 
