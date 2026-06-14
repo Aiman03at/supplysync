@@ -1,15 +1,8 @@
-import { Request, Response, NextFunction } from "express";
-import pool from "../db/connection";
-import { createError } from "../middleware/errorHandler";
+import { Request, Response, NextFunction } from 'express';
+import { pool } from '../db/connection.js';
+import { createError } from '../middleware/errorHandler.js';
 
-const VALID_STATUSES = [
-  "pending",
-  "confirmed",
-  "shipped",
-  "delivered",
-  "cancelled",
-] as const;
-
+const VALID_STATUSES = ['pending', 'confirmed', 'shipped', 'delivered', 'cancelled'] as const;
 type OrderStatus = (typeof VALID_STATUSES)[number];
 
 export async function getOrders(
@@ -51,16 +44,14 @@ export async function createOrder(
     };
 
     if (!type || quantity == null || !product_id) {
-      throw createError("type, quantity, and product_id are required", 400);
+      throw createError('type, quantity, and product_id are required', 400);
     }
-    if (!["purchase", "sales"].includes(type)) {
+    if (!['purchase', 'sales'].includes(type)) {
       throw createError("type must be 'purchase' or 'sales'", 400);
     }
 
     const result = await pool.query(
-      `INSERT INTO orders (type, quantity, product_id)
-       VALUES ($1, $2, $3)
-       RETURNING *`,
+      `INSERT INTO orders (type, quantity, product_id) VALUES ($1, $2, $3) RETURNING *`,
       [type, quantity, product_id]
     );
     res.status(201).json(result.rows[0]);
@@ -79,10 +70,7 @@ export async function updateOrderStatus(
     const { status } = req.body as { status: string };
 
     if (!status || !VALID_STATUSES.includes(status as OrderStatus)) {
-      throw createError(
-        `status must be one of: ${VALID_STATUSES.join(", ")}`,
-        400
-      );
+      throw createError(`status must be one of: ${VALID_STATUSES.join(', ')}`, 400);
     }
 
     const result = await pool.query(
@@ -90,7 +78,7 @@ export async function updateOrderStatus(
       [status, id]
     );
 
-    if (result.rows.length === 0) throw createError("Order not found", 404);
+    if (result.rows.length === 0) throw createError('Order not found', 404);
     res.json(result.rows[0]);
   } catch (err) {
     next(err);

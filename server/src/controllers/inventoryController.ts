@@ -1,6 +1,6 @@
-import { Request, Response, NextFunction } from "express";
-import pool from "../db/connection";
-import { createError } from "../middleware/errorHandler";
+import { Request, Response, NextFunction } from 'express';
+import { pool } from '../db/connection.js';
+import { createError } from '../middleware/errorHandler.js';
 
 export async function getAllInventory(
   _req: Request,
@@ -71,7 +71,7 @@ export async function updateInventory(
     };
 
     if (quantity == null || reorder_point == null) {
-      throw createError("quantity and reorder_point are required", 400);
+      throw createError('quantity and reorder_point are required', 400);
     }
 
     const result = await pool.query(
@@ -82,7 +82,7 @@ export async function updateInventory(
       [quantity, reorder_point, id]
     );
 
-    if (result.rows.length === 0) throw createError("Inventory record not found", 404);
+    if (result.rows.length === 0) throw createError('Inventory record not found', 404);
     res.json(result.rows[0]);
   } catch (err) {
     next(err);

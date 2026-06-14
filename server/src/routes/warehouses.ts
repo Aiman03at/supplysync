@@ -1,13 +1,20 @@
-<<<<<<< HEAD
 import express from 'express';
 import { authenticateToken } from '../middleware/auth.js';
 import { pool } from '../db/connection.js';
 
 const router = express.Router();
 
-router.get('/', async (req, res, next) => {
+router.get('/', async (_req, res, next) => {
   try {
-    const result = await pool.query('SELECT * FROM warehouses ORDER BY name');
+    const result = await pool.query(`
+      SELECT w.*,
+        COUNT(i.id)::int              AS product_count,
+        COALESCE(SUM(i.quantity), 0)::int AS total_stock
+      FROM warehouses w
+      LEFT JOIN inventory i ON i.warehouse_id = w.id
+      GROUP BY w.id
+      ORDER BY w.name
+    `);
     res.json(result.rows);
   } catch (error) {
     next(error);
@@ -32,15 +39,5 @@ router.post('/', authenticateToken, async (req, res, next) => {
     next(error);
   }
 });
-=======
-import { Router } from "express";
-import { getWarehouses, createWarehouse } from "../controllers/warehouseController";
-import { authenticateToken } from "../middleware/auth";
-
-const router = Router();
-
-router.get("/",  getWarehouses);
-router.post("/", authenticateToken, createWarehouse);
->>>>>>> aecb8f6a7eb0193a1bdb117e8337d9919992da4c
 
 export default router;
