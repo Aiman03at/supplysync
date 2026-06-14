@@ -1,6 +1,6 @@
-import { Request, Response, NextFunction } from "express";
-import pool from "../db/connection";
-import { createError } from "../middleware/errorHandler";
+import { Request, Response, NextFunction } from 'express';
+import { pool } from '../db/connection.js';
+import { createError } from '../middleware/errorHandler.js';
 
 export async function getSuppliers(
   _req: Request,
@@ -29,19 +29,15 @@ export async function createSupplier(
   next: NextFunction
 ): Promise<void> {
   try {
-    const { name, lead_time_days, reliability_score, contact_email } =
-      req.body as {
-        name: string;
-        lead_time_days: number;
-        reliability_score: number;
-        contact_email: string;
-      };
+    const { name, lead_time_days, reliability_score, contact_email } = req.body as {
+      name: string;
+      lead_time_days: number;
+      reliability_score: number;
+      contact_email: string;
+    };
 
     if (!name || lead_time_days == null || reliability_score == null || !contact_email) {
-      throw createError(
-        "name, lead_time_days, reliability_score, and contact_email are required",
-        400
-      );
+      throw createError('name, lead_time_days, reliability_score, and contact_email are required', 400);
     }
 
     const result = await pool.query(
