@@ -25,7 +25,8 @@ export async function createWarehouse(req, res, next) {
             throw createError('name, location, capacity, and manager_name are required', 400);
         }
         const result = await pool.query(`INSERT INTO warehouses (name, location, capacity, manager_name)
-       VALUES ($1, $2, $3, $4) RETURNING *`, [name, location, capacity, manager_name]);
+       VALUES ($1, $2, $3, $4)
+       RETURNING *`, [name, location, capacity, manager_name]);
         res.status(201).json(result.rows[0]);
     }
     catch (err) {

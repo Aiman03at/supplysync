@@ -7,7 +7,13 @@ import { pool } from './connection.js';
 // __dirname is not available in ES modules — derive it from import.meta.url
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 async function migrate() {
-    const sql = fs.readFileSync(path.join(__dirname, 'schema.sql'), 'utf8');
+    // schema.sql lives in src/db and is not emitted to dist by tsc, so read it
+    // from the source tree (dist/db -> ../../src/db), falling back to alongside
+    // this file in case the .sql is ever copied into dist.
+    const distSchema = path.join(__dirname, 'schema.sql');
+    const srcSchema = path.join(__dirname, '..', '..', 'src', 'db', 'schema.sql');
+    const schemaPath = fs.existsSync(distSchema) ? distSchema : srcSchema;
+    const sql = fs.readFileSync(schemaPath, 'utf8');
     const client = await pool.connect();
     try {
         console.log('Running migration...');
