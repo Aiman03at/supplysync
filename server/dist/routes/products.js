@@ -1,6 +1,6 @@
 import express from 'express';
 import { authenticateToken } from '../middleware/auth.js';
-import { getAllProducts, getProductById, createProduct, updateProduct, deleteProduct } from '../controllers/productController.js';
+import { getAllProducts, getProductById, createProduct, updateProduct, deleteProduct, } from '../controllers/productController.js';
 const router = express.Router();
 router.get('/', getAllProducts);
 router.get('/:id', getProductById);
