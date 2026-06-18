@@ -1,97 +1,154 @@
 import { Server as SocketServer, Socket } from 'socket.io';
 import { pool } from '../db/connection.js';
 
+interface InventoryUpdatePayload {
+  productId: string;
+  warehouseId: string;
+  quantity: number;
+}
+
+interface OrderCreatePayload {
+  productId: string;
+  quantity: number;
+  type: 'purchase' | 'sales';
+}
+
+interface AlertAcknowledgePayload {
+  alertId: string;
+}
+
 export function initializeSocket(io: SocketServer): void {
   io.on('connection', (socket: Socket) => {
-    console.log(`Client connected: ${socket.id}`);
+    console.log(`[Socket] Client connected: ${socket.id}`);
 
-    // CLIENT → SERVER: update an inventory quantity
-    socket.on(
-      'inventory:update',
-      async (data: { inventoryId: string; quantity: number; productId: string; warehouseId: string }) => {
-        try {
-          await pool.query(
-            'UPDATE inventory SET quantity = $1, updated_at = NOW() WHERE id = $2',
-            [data.quantity, data.inventoryId]
-          );
-
-          // Broadcast the new quantity to all connected clients
-          io.emit('inventory:changed', {
-            inventoryId: data.inventoryId,
-            productId: data.productId,
-            warehouseId: data.warehouseId,
-            quantity: data.quantity,
-          });
-
-          // Auto-alert if stock dropped below reorder point
-          const result = await pool.query(
-            `SELECT i.reorder_point, p.name AS product_name
-             FROM inventory i
-             JOIN products p ON p.id = i.product_id
-             WHERE i.id = $1`,
-            [data.inventoryId]
-          );
-          const row = result.rows[0];
-          if (row && data.quantity < row.reorder_point) {
-            const alertResult = await pool.query(
-              `INSERT INTO alerts (type, severity, message, product_id)
-               SELECT 'low_stock', 'high',
-                      $1 || ' is below reorder point (' || $2 || ' units remaining)',
-                      product_id
-               FROM inventory WHERE id = $3
-               RETURNING id, type, severity, message, product_id, created_at`,
-              [row.product_name, data.quantity, data.inventoryId]
-            );
-            if (alertResult.rows[0]) {
-              io.emit('alert:triggered', {
-                ...alertResult.rows[0],
-                product_name: row.product_name,
-              });
-            }
-          }
-        } catch (err) {
-          console.error('inventory:update error:', err);
-        }
-      }
-    );
-
-    // CLIENT → SERVER: create a new order
-    socket.on(
-      'order:create',
-      async (data: { type: string; quantity: number; productId: string }) => {
-        try {
-          const result = await pool.query(
-            `INSERT INTO orders (type, quantity, product_id)
-             VALUES ($1, $2, $3)
-             RETURNING *`,
-            [data.type, data.quantity, data.productId]
-          );
-          io.emit('order:statusChanged', {
-            ...result.rows[0],
-            previousStatus: null,
-          });
-        } catch (err) {
-          console.error('order:create error:', err);
-        }
-      }
-    );
-
-    // CLIENT → SERVER: acknowledge (resolve) an alert
-    socket.on('alert:acknowledge', async (data: { alertId: string }) => {
+    // ─── inventory:update ──────────────────────────────────────────────────
+    // Updates stock in the DB, broadcasts the new level to every client,
+    // and auto-inserts + broadcasts an alert when stock falls below reorder point.
+    socket.on('inventory:update', async (data: InventoryUpdatePayload) => {
+      const { productId, warehouseId, quantity } = data;
       try {
-        await pool.query(
-          'UPDATE alerts SET resolved = TRUE WHERE id = $1',
-          [data.alertId]
+        const result = await pool.query(
+          `UPDATE inventory
+           SET quantity = $1, updated_at = NOW()
+           WHERE product_id = $2 AND warehouse_id = $3
+           RETURNING *`,
+          [quantity, productId, warehouseId]
         );
-        // Only notify the sender — other clients keep the alert visible until they refresh
-        socket.emit('alert:acknowledged', { alertId: data.alertId });
+
+        if (result.rows.length === 0) {
+          socket.emit('error', { message: 'Inventory record not found' });
+          return;
+        }
+
+        const row = result.rows[0];
+
+        // Broadcast the updated stock level to ALL connected clients.
+        io.emit('inventory:changed', {
+          id: row.id,
+          productId: row.product_id,
+          warehouseId: row.warehouse_id,
+          quantity: row.quantity,
+          reorderPoint: row.reorder_point,
+          updatedAt: row.updated_at,
+        });
+
+        // If the new quantity is below the reorder point, create an alert
+        // in the DB and broadcast it to everyone immediately.
+        if (quantity < row.reorder_point) {
+          const productRes = await pool.query(
+            'SELECT name, sku FROM products WHERE id = $1',
+            [productId]
+          );
+          const product = productRes.rows[0];
+
+          const severity =
+            quantity === 0                        ? 'critical'
+            : quantity < row.reorder_point * 0.5 ? 'high'
+            :                                      'medium';
+
+          const alertRes = await pool.query(
+            `INSERT INTO alerts (type, severity, product_id, message)
+             VALUES ('low_stock', $1, $2, $3)
+             RETURNING *`,
+            [
+              severity,
+              productId,
+              `${product?.name ?? 'Product'} (${product?.sku ?? productId}) dropped to ${quantity} units — reorder point is ${row.reorder_point}.`,
+            ]
+          );
+
+          // Broadcast the new alert to ALL connected clients.
+          io.emit('alert:triggered', {
+            ...alertRes.rows[0],
+            productName: product?.name,
+          });
+        }
       } catch (err) {
-        console.error('alert:acknowledge error:', err);
+        console.error('[Socket] inventory:update error:', err);
+        socket.emit('error', { message: 'Failed to update inventory' });
+      }
+    });
+
+    // ─── order:create ──────────────────────────────────────────────────────
+    socket.on('order:create', async (data: OrderCreatePayload) => {
+      const { productId, quantity, type } = data;
+      try {
+        if (!['purchase', 'sales'].includes(type)) {
+          socket.emit('error', { message: "type must be 'purchase' or 'sales'" });
+          return;
+        }
+
+        const result = await pool.query(
+          `INSERT INTO orders (type, status, quantity, product_id)
+           VALUES ($1, 'pending', $2, $3)
+           RETURNING *`,
+          [type, quantity, productId]
+        );
+
+        const order = result.rows[0];
+
+        // Broadcast the new order (status = 'pending') to ALL clients.
+        io.emit('order:statusChanged', {
+          id: order.id,
+          type: order.type,
+          status: order.status,
+          quantity: order.quantity,
+          productId: order.product_id,
+          previousStatus: null,
+          createdAt: order.created_at,
+        });
+      } catch (err) {
+        console.error('[Socket] order:create error:', err);
+        socket.emit('error', { message: 'Failed to create order' });
+      }
+    });
+
+    // ─── alert:acknowledge ─────────────────────────────────────────────────
+    // Marks an alert resolved in the DB and confirms back to the sender only.
+    // Other clients will remove it on their next /api/inventory/alerts poll.
+    socket.on('alert:acknowledge', async (data: AlertAcknowledgePayload) => {
+      const { alertId } = data;
+      try {
+        const result = await pool.query(
+          `UPDATE alerts SET resolved = TRUE WHERE id = $1 RETURNING id`,
+          [alertId]
+        );
+
+        if (result.rows.length === 0) {
+          socket.emit('error', { message: 'Alert not found' });
+          return;
+        }
+
+        // Reply only to the client that acknowledged — not a global broadcast.
+        socket.emit('alert:acknowledged', { alertId });
+      } catch (err) {
+        console.error('[Socket] alert:acknowledge error:', err);
+        socket.emit('error', { message: 'Failed to acknowledge alert' });
       }
     });
 
     socket.on('disconnect', () => {
-      console.log(`Client disconnected: ${socket.id}`);
+      console.log(`[Socket] Client disconnected: ${socket.id}`);
     });
   });
 }

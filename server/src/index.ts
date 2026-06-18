@@ -36,8 +36,8 @@ app.use('/api/auth', authRoutes);
 app.use('/api/products', productRoutes);
 app.use('/api/inventory', inventoryRoutes);
 app.use('/api/warehouses', warehouseRoutes);
-app.use('/api/orders', orderRoutes);
-app.use('/api/suppliers', supplierRoutes);
+app.use('/api/orders',     orderRoutes);
+app.use('/api/suppliers',  supplierRoutes);
 
 app.use(errorHandler);
 
