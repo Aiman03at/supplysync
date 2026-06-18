@@ -27,6 +27,13 @@ export const io = new SocketServer(httpServer, {
 app.use(helmet());
 app.use(cors());
 app.use(express.json());
+app.use(express.static('public'));
+
+testConnection();
+
+// Initialize Socket.io
+initializeSocket(httpServer);
+
 
 app.get('/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
