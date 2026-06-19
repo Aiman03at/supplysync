@@ -25,7 +25,7 @@ app.use(express.json());
 app.use(express.static('public'));
 testConnection();
 // Initialize Socket.io
-initializeSocket(httpServer);
+initializeSocket(io);
 app.get('/health', (_req, res) => {
     res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });

@@ -12,7 +12,7 @@ export async function register(req, res, next) {
             return res.status(409).json({ error: 'Email already registered' });
         }
         const password_hash = await bcrypt.hash(password, 10);
-        const result = await pool.query('INSERT INTO users (email, password_hash, name) VALUES ($1, $2, $3) RETURNING id, email, name, role', [email, hashedPassword, name]);
+        const result = await pool.query('INSERT INTO users (email, password_hash, name) VALUES ($1, $2, $3) RETURNING id, email, name, role', [email, password_hash, name]);
         const user = result.rows[0];
         const token = jwt.sign({ id: user.id, email: user.email, role: user.role }, process.env.JWT_SECRET || 'secret', { expiresIn: '24h' });
         res.status(201).json({ token, user });

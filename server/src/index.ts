@@ -32,7 +32,7 @@ app.use(express.static('public'));
 testConnection();
 
 // Initialize Socket.io
-initializeSocket(httpServer);
+initializeSocket(io);
 
 
 app.get('/health', (_req, res) => {
