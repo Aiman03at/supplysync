@@ -1,9 +1,9 @@
 import { Server as SocketServer, Socket } from 'socket.io';
+import type { Server as HttpServer } from 'http';
 import { pool } from '../db/connection.js';
 
 interface InventoryUpdatePayload {
-  productId: string;
-  warehouseId: string;
+  inventoryId: string;
   quantity: number;
 }
 
@@ -17,7 +17,11 @@ interface AlertAcknowledgePayload {
   alertId: string;
 }
 
-export function initializeSocket(io: SocketServer): void {
+export function initializeSocket(httpServer: HttpServer): SocketServer {
+  const io = new SocketServer(httpServer, {
+    cors: { origin: '*' },
+  });
+
   io.on('connection', (socket: Socket) => {
     console.log(`[Socket] Client connected: ${socket.id}`);
 
@@ -25,14 +29,14 @@ export function initializeSocket(io: SocketServer): void {
     // Updates stock in the DB, broadcasts the new level to every client,
     // and auto-inserts + broadcasts an alert when stock falls below reorder point.
     socket.on('inventory:update', async (data: InventoryUpdatePayload) => {
-      const { productId, warehouseId, quantity } = data;
+      const { inventoryId, quantity } = data;
       try {
         const result = await pool.query(
           `UPDATE inventory
            SET quantity = $1, updated_at = NOW()
-           WHERE product_id = $2 AND warehouse_id = $3
+           WHERE id = $2
            RETURNING *`,
-          [quantity, productId, warehouseId]
+          [quantity, inventoryId]
         );
 
         if (result.rows.length === 0) {
@@ -57,7 +61,7 @@ export function initializeSocket(io: SocketServer): void {
         if (quantity < row.reorder_point) {
           const productRes = await pool.query(
             'SELECT name, sku FROM products WHERE id = $1',
-            [productId]
+            [row.product_id]
           );
           const product = productRes.rows[0];
 
@@ -72,8 +76,8 @@ export function initializeSocket(io: SocketServer): void {
              RETURNING *`,
             [
               severity,
-              productId,
-              `${product?.name ?? 'Product'} (${product?.sku ?? productId}) dropped to ${quantity} units — reorder point is ${row.reorder_point}.`,
+              row.product_id,
+              `${product?.name ?? 'Product'} (${product?.sku ?? row.product_id}) dropped to ${quantity} units — reorder point is ${row.reorder_point}.`,
             ]
           );
 
@@ -151,4 +155,6 @@ export function initializeSocket(io: SocketServer): void {
       console.log(`[Socket] Client disconnected: ${socket.id}`);
     });
   });
+
+  return io;
 }

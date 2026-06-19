@@ -2,39 +2,41 @@ import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import dotenv from 'dotenv';
-// Database
+import http from 'http';
 import { testConnection } from './db/connection.js';
-// Routes
 import authRoutes from './routes/auth.js';
 import productRoutes from './routes/products.js';
 import inventoryRoutes from './routes/inventory.js';
 import warehouseRoutes from './routes/warehouses.js';
 import orderRoutes from './routes/orders.js';
 import supplierRoutes from './routes/suppliers.js';
-// Middleware
 import { errorHandler } from './middleware/errorHandler.js';
+import { initializeSocket } from './websockets/socketHandler.js';
 dotenv.config();
 const app = express();
-// Middleware
+const httpServer = http.createServer(app);
 app.use(cors());
-app.use(helmet());
+// Disable CSP so the static WebSocket tester page (public/test.html), which uses
+// inline scripts + onclick handlers, can run. All other helmet protections stay on.
+app.use(helmet({ contentSecurityPolicy: false }));
 app.use(express.json());
-// Test database connection on startup
+app.use(express.static('public'));
+// Convenience redirect so /test resolves to the static tester page.
+app.get('/test', (_req, res) => res.redirect('/test.html'));
 testConnection();
-// Health check
+// Initialize Socket.io
+initializeSocket(httpServer);
 app.get('/health', (req, res) => {
     res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
-// API Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/products', productRoutes);
 app.use('/api/inventory', inventoryRoutes);
 app.use('/api/warehouses', warehouseRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/suppliers', supplierRoutes);
-// Error handler MUST be last
 app.use(errorHandler);
 const PORT = process.env.PORT || 3001;
-app.listen(PORT, () => {
+httpServer.listen(PORT, () => {
     console.log(`SupplySync server running on port ${PORT}`);
 });

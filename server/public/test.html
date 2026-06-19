@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>SupplySync WebSocket Tester</title>
+  <style>
+    body { font-family: Arial; margin: 20px; background: #f5f5f5; }
+    .container { max-width: 800px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; }
+    h1 { color: #333; }
+    .status { padding: 10px; margin: 10px 0; border-radius: 4px; }
+    .connected { background: #d4edda; color: #155724; }
+    .disconnected { background: #f8d7da; color: #721c24; }
+    button { padding: 10px 20px; margin: 5px; cursor: pointer; background: #007bff; color: white; border: none; border-radius: 4px; }
+    button:hover { background: #0056b3; }
+    .log { background: #f9f9f9; border: 1px solid #ddd; padding: 10px; margin: 10px 0; border-radius: 4px; max-height: 300px; overflow-y: auto; font-family: monospace; font-size: 12px; }
+    .log-entry { padding: 5px 0; border-bottom: 1px solid #eee; }
+    .event-in { color: green; }
+    .event-out { color: blue; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>SupplySync WebSocket Tester</h1>
+    
+    <div id="status" class="status disconnected">
+      Status: <span id="status-text">Disconnected</span>
+    </div>
+
+    <h2>Test Inventory Update</h2>
+    <input type="text" id="inventoryId" placeholder="Inventory ID (UUID)" />
+    <input type="number" id="quantity" placeholder="New Quantity" value="45" />
+    <button onclick="testInventoryUpdate()">Update Inventory</button>
+
+    <h2>Test Order Creation</h2>
+    <select id="orderType">
+      <option value="purchase">Purchase Order</option>
+      <option value="sales">Sales Order</option>
+    </select>
+    <input type="number" id="orderQuantity" placeholder="Quantity" value="10" />
+    <input type="text" id="productId" placeholder="Product ID (UUID)" />
+    <button onclick="testOrderCreate()">Create Order</button>
+
+    <h2>Event Log</h2>
+    <button onclick="clearLog()">Clear Log</button>
+    <div class="log" id="log"></div>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    const socket = io();
+    
+    socket.on('connect', () => {
+      updateStatus(true);
+      log('✓ Connected to server', 'event-in');
+    });
+
+    socket.on('disconnect', () => {
+      updateStatus(false);
+      log('✗ Disconnected from server', 'event-in');
+    });
+
+    // Listen for all events
+    socket.on('inventory:changed', (data) => {
+      log(`📦 inventory:changed: ${JSON.stringify(data)}`, 'event-in');
+    });
+
+    socket.on('alert:triggered', (data) => {
+      log(`⚠️ alert:triggered: ${JSON.stringify(data)}`, 'event-in');
+    });
+
+    socket.on('order:created', (data) => {
+      log(`📋 order:created: ${JSON.stringify(data)}`, 'event-in');
+    });
+
+    socket.on('order:statusChanged', (data) => {
+      log(`📋 order:statusChanged: ${JSON.stringify(data)}`, 'event-in');
+    });
+
+    socket.on('alert:resolved', (data) => {
+      log(`✓ alert:resolved: ${JSON.stringify(data)}`, 'event-in');
+    });
+
+    socket.on('error', (data) => {
+      log(`❌ error: ${JSON.stringify(data)}`, 'event-in');
+    });
+
+    // Test functions
+    function testInventoryUpdate() {
+      const inventoryId = document.getElementById('inventoryId').value;
+      const quantity = document.getElementById('quantity').value;
+
+      if (!inventoryId || !quantity) {
+        alert('Please fill in all fields');
+        return;
+      }
+
+      log(`📤 Emitting inventory:update: id=${inventoryId}, qty=${quantity}`, 'event-out');
+      socket.emit('inventory:update', { inventoryId, quantity: parseInt(quantity) });
+    }
+
+    function testOrderCreate() {
+      const type = document.getElementById('orderType').value;
+      const quantity = document.getElementById('orderQuantity').value;
+      const productId = document.getElementById('productId').value;
+
+      if (!productId || !quantity) {
+        alert('Please fill in all fields');
+        return;
+      }
+
+      log(`📤 Emitting order:create: type=${type}, qty=${quantity}, productId=${productId}`, 'event-out');
+      socket.emit('order:create', { type, quantity: parseInt(quantity), productId });
+    }
+
+    function updateStatus(connected) {
+      const statusEl = document.getElementById('status');
+      const statusText = document.getElementById('status-text');
+      
+      if (connected) {
+        statusEl.className = 'status connected';
+        statusText.textContent = 'Connected ✓';
+      } else {
+        statusEl.className = 'status disconnected';
+        statusText.textContent = 'Disconnected ✗';
+      }
+    }
+
+    function log(message, className = '') {
+      const logEl = document.getElementById('log');
+      const entry = document.createElement('div');
+      entry.className = `log-entry ${className}`;
+      entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+      logEl.appendChild(entry);
+      logEl.scrollTop = logEl.scrollHeight;
+    }
+
+    function clearLog() {
+      document.getElementById('log').innerHTML = '';
+    }
+  </script>
+</body>
+</html>
