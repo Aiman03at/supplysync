@@ -32,9 +32,7 @@ export async function createOrder(req, res, next) {
         if (!['purchase', 'sales'].includes(type)) {
             throw createError("type must be 'purchase' or 'sales'", 400);
         }
-        const result = await pool.query(`INSERT INTO orders (type, quantity, product_id)
-       VALUES ($1, $2, $3)
-       RETURNING *`, [type, quantity, product_id]);
+        const result = await pool.query(`INSERT INTO orders (type, quantity, product_id) VALUES ($1, $2, $3) RETURNING *`, [type, quantity, product_id]);
         res.status(201).json(result.rows[0]);
     }
     catch (err) {
