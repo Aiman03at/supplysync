@@ -4,15 +4,9 @@ import { pool } from '../db/connection.js';
 
 const router = express.Router();
 
-router.get('/', async (_req, res, next) => {
+router.get('/', async (req, res, next) => {
   try {
-    const result = await pool.query(`
-      SELECT s.*, COUNT(p.id)::int AS product_count
-      FROM suppliers s
-      LEFT JOIN products p ON p.supplier_id = s.id AND p.deleted_at IS NULL
-      GROUP BY s.id
-      ORDER BY s.name
-    `);
+    const result = await pool.query('SELECT * FROM suppliers ORDER BY name');
     res.json(result.rows);
   } catch (error) {
     next(error);

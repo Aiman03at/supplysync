@@ -2,7 +2,7 @@ import express from 'express';
 import { authenticateToken } from '../middleware/auth.js';
 import { pool } from '../db/connection.js';
 const router = express.Router();
-router.get('/', async (req, res, next) => {
+router.get('/', async (_req, res, next) => {
     try {
         const result = await pool.query(`
       SELECT o.*, p.name as product_name, p.sku, s.name as supplier_name
